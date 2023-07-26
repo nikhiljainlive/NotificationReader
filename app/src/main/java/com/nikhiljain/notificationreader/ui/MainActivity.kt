@@ -36,7 +36,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btn_stop_service).setOnClickListener {
-            NotificationReaderService.stopService(this)
+            runCatching { NotificationReaderService.stopService(this) }
+                .onFailure { it.printStackTrace() }
         }
         // If the user did not turn the notification listener service on we prompt him to do so
         if (!isNotificationServiceEnabled) {
