@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.drawable.Icon
-import android.os.Build
 import android.os.IBinder
 import android.speech.tts.TextToSpeech
 import android.util.Log
@@ -16,6 +15,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import androidx.core.graphics.drawable.toBitmap
 import com.google.mlkit.nl.languageid.LanguageIdentification
 import com.google.mlkit.nl.languageid.LanguageIdentifier
@@ -49,8 +49,9 @@ class NotificationReaderService : Service() {
 
     private val notificationContentReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            val notification = intent.getParcelableExtra<NotificationContent>(
-                NotificationListenerExampleService.EXTRA_NOTIFICATION_CONTENT
+            val notification = IntentCompat.getParcelableExtra(
+                intent, NotificationListenerExampleService.EXTRA_NOTIFICATION_CONTENT,
+                NotificationContent::class.java
             ) ?: run {
                 Log.e(TAG, "onReceive: notification is null")
                 return
@@ -77,7 +78,7 @@ class NotificationReaderService : Service() {
                 try {
                     var language = detectLanguage(message)
                     if (language == UNDETERMINED_LANGUAGE_TAG) {
-                        language = "hi-Latn" // hindi Latin
+                        language = LANGUAGE_CODE_HINDI // hindi language
                         showToastMessage(R.string.error_message_undefined_language_detected)
                     }
 
@@ -129,11 +130,8 @@ class NotificationReaderService : Service() {
         smallIcon: Int,
         largeIcon: Icon? = null
     ) {
-        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationCompat.Builder(this, CHANNEL_ID)
-        } else {
-            NotificationCompat.Builder(this)
-        }.setContentTitle(title)
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(smallIcon)
             .also { builder ->
@@ -155,7 +153,12 @@ class NotificationReaderService : Service() {
             ACTION_START_SERVICE -> {
                 val intentFilter = IntentFilter()
                 intentFilter.addAction(NotificationListenerExampleService.NOTIFICATION_RECEIVED_ACTION)
-                registerReceiver(notificationContentReceiver, intentFilter)
+                ContextCompat.registerReceiver(
+                    this,
+                    notificationContentReceiver,
+                    intentFilter,
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+                )
             }
 
             ACTION_STOP_SERVICE -> {
@@ -233,12 +236,13 @@ class NotificationReaderService : Service() {
             }
 
             textToSpeech?.speak(
-                text, TextToSpeech.QUEUE_FLUSH,
+                text, TextToSpeech.QUEUE_ADD,       // add to the queue
                 null, "TEXT"
             )
             cont.resume(Unit)
         }
 
+    @Suppress("UNUSED")
     private fun showDownloadLanguageDialog(language: String) {
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.text_language_not_supported, language))
@@ -276,10 +280,11 @@ class NotificationReaderService : Service() {
 
     companion object {
         private const val TAG = "NotificationReader"
-        const val CHANNEL_ID = "com.nikhiljain.notificationreader.notification_reader_service"
         private const val EXCEPTION_MESSAGE_EMPTY_TEXT = "Text is empty"
         private const val EXCEPTION_MESSAGE_LANGUAGE_MISSING =
             "Language is either not available or supported"
+        private const val LANGUAGE_CODE_HINDI = "hi"
+        const val CHANNEL_ID = "com.nikhiljain.notificationreader.notification_reader_service"
         const val SERVICE_ACTION = "SERVICE_ACTION"
         const val ACTION_START_SERVICE = "START_SERVICE"
         const val ACTION_STOP_SERVICE = "STOP_SERVICE"
