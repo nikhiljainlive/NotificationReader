@@ -273,6 +273,7 @@ class NotificationReaderService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        languageIdentifier.close()
         textToSpeech?.stop()
         textToSpeech?.shutdown()
         textToSpeech = null
@@ -289,12 +290,14 @@ class NotificationReaderService : Service() {
         const val ACTION_START_SERVICE = "START_SERVICE"
         const val ACTION_STOP_SERVICE = "STOP_SERVICE"
 
+        @JvmStatic
         fun startService(context: Context) {
             val intent = Intent(context, NotificationReaderService::class.java)
             intent.putExtra(SERVICE_ACTION, ACTION_START_SERVICE)
             ContextCompat.startForegroundService(context, intent)
         }
 
+        @JvmStatic
         fun stopService(context: Context) {
             val intent = Intent(context, NotificationReaderService::class.java)
             intent.putExtra(SERVICE_ACTION, ACTION_STOP_SERVICE)
